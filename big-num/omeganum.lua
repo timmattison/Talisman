@@ -28,7 +28,7 @@ R.E = math.exp(1)
 R.LN2 = math.log(2, R.E)
 R.LN10 = math.log(10, R.E)
 R.LOG2E = math.log(R.E, 2)
-R.LOG10E = math.log(R.E, 0)
+R.LOG10E = math.log(R.E, 10)
 R.PI = math.pi
 R.SQRT1_2 = math.sqrt(0.5)
 R.SQRT2 = math.sqrt(2)
@@ -273,7 +273,7 @@ function Big:normalize()
             b=true;
         end
         while (((x.array[1] or 0) < math.log(R.MAX_DISP_INTEGER,10)) and ((x.array[2] ~= nil) and (x.array[2] ~= 0))) do
-            x.array[1] = math.pow(10,x.array[1], 10);
+            x.array[1] = math.pow(10, x.array[1]);
             x.array[2] = x.array[2] - 1
             b=true;
         end
@@ -512,7 +512,7 @@ function Big:parse(input)
             end
             if (b[2] == 0) then
                 if (intPartLen - 1 >= LONG_STRING_MIN_LENGTH) then
-                    b[1] = math.log10(b[1]) + log10LongString(string.sub(a[i], 1, intPartLen - 1))
+                    b[1] = math.log(b[1], 10) + log10LongString(string.sub(a[i], 1, intPartLen - 1))
                     b[2] = 1;
                 elseif ((a[i] ~= nil) and (a[i] ~= "") and (tonumber(a[i]) ~= nil)) then
                     b[1] = b[1] * tonumber(a[i]);
@@ -531,7 +531,7 @@ function Big:parse(input)
                 if (b[2]==1) then
                     b[1] = b[1] + d;
                 elseif ((b[2]==2) and (b[1]<MAX_E+math.log(d, 10))) then
-                    b[1] = b[1] + math.log(1+math.pow(10,Math.log10(d)-b[0]), 10);
+                    b[1] = b[1] + math.log(1+math.pow(10, math.log(d, 10)-b[1]), 10);
                 end
             end
             if ((b[1]<MAX_E) and (b[2] ~= 0) and (b[2] ~= nil)) then
@@ -691,14 +691,18 @@ function Big:sub(other)
     if (other.sign==-1) then
         return x:add(other:neg())
     end
+    if (x:isNaN() or other:isNaN()) then
+        return Big:create(B.NaN)
+    end
+    -- inf - inf is undefined (NaN), must check before equality check
+    if (x:isInfinite() and other:isInfinite() and x.sign == other.sign) then
+        return Big:create(B.NaN)
+    end
     if (x:eq(other)) then
         return Big:create(B.ZERO)
     end
     if (other:eq(B.ZERO)) then
         return x:clone();
-    end
-    if (x:isNaN() or other:isNaN() or (x:isInfinite() and other:isInfinite() and x:eq(other:neg()))) then
-        return Big:create(B.NaN)
     end
     if (x:isInfinite()) then
         return x:clone()
@@ -755,7 +759,15 @@ function Big:div(other)
     if (x.sign==-1) then
         return x:abs():div(other:abs())
     end
-    if (x:isNaN() or other:isNaN() or (x:isInfinite() and other:isInfinite() and x:eq(other:neg()))) then
+    if (x:isNaN() or other:isNaN()) then
+        return Big:create(B.NaN)
+    end
+    -- inf / inf is undefined (NaN)
+    if (x:isInfinite() and other:isInfinite()) then
+        return Big:create(B.NaN)
+    end
+    -- 0 / 0 is undefined (NaN)
+    if (x:eq(B.ZERO) and other:eq(B.ZERO)) then
         return Big:create(B.NaN)
     end
     if (other:eq(B.ZERO)) then
@@ -959,7 +971,7 @@ function Big:root(other)
         if self:gt(other) then
             return self:clone()
         else
-            Big:create(B.ZERO)
+            return Big:create(B.ZERO)
         end
     end
     return Big:create(10):pow(self:log10():div(other));
@@ -1300,9 +1312,7 @@ function Big:lambertw()
         return x:clone();
     end
     if (x:lt(-0.3678794411710499)) then
-        print("lambertw is unimplemented for results less than -1, sorry!")
-        local a = nil
-        return a.b
+        error("lambertw is unimplemented for results less than -1")
     end
     if (x:gt(B.TETRATED_MAX_SAFE_INTEGER)) then
         return x:clone();
@@ -1344,9 +1354,7 @@ function Big:f_lambertw(z)
         end
         w=wn
     end
-    print("Iteration failed to converge: "+z)
-    local a = nil
-    return a.b
+    error("f_lambertw iteration failed to converge for z=" .. tostring(z))
 end
 
 function Big:d_lambertw(z)
@@ -1376,9 +1384,7 @@ function Big:d_lambertw(z)
         end
         w = wn
     end
-    print("Iteration failed to converge: "+z)
-    local a = nil
-    return a.b
+    error("d_lambertw iteration failed to converge for z=" .. tostring(z))
 end
 
 ------------------------metastuff----------------------------

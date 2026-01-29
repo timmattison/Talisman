@@ -91,16 +91,29 @@ function BigMeta.__div(b1, b2)
     return b1:div(b2)
 end
 
+function Big:abs()
+    if self.m < 0 then
+        return Big:new(-self.m, self.e)
+    end
+    return Big:new(self.m, self.e)
+end
+
 function Big:mod(other)
-    other = Big:create(other)
-    if (other:eq(R.ZERO)) then
-        Big:create(R.ZERO)
+    other = Big:new(other)
+    if other:eq(Big:new(0)) then
+        return Big:new(0)
     end
-    if (self.sign*other.sign == -1) then
-        return self:abs():mod(other:abs()):neg()
+    -- Handle signs: use is_negative() instead of non-existent sign property
+    local self_neg = self:is_negative()
+    local other_neg = other:is_negative()
+    if self_neg and not other_neg then
+        return self:abs():mod(other:abs()):negate()
     end
-    if (self.sign==-1) then
+    if self_neg and other_neg then
         return self:abs():mod(other:abs())
+    end
+    if not self_neg and other_neg then
+        return self:mod(other:abs())
     end
     return self:sub(self:div(other):floor():mul(other))
 end
@@ -115,14 +128,16 @@ end
 
 function Big:log10()
     -- The default value of 0 is to make Balatro happy...
-    if self.e == nan and self.m == nan then return 0 end
+    -- Check for NaN (NaN ~= NaN is true)
+    if self.e ~= self.e or self.m ~= self.m then return 0 end
     if self:lte(Big:new(0)) then return 0 end
     return self.e + math.log(self.m, 10)
 end
 
 function Big:log(base)
     -- The default value of 0 is to make Balatro happy...
-    if self.e == nan and self.m == nan then return 0 end
+    -- Check for NaN (NaN ~= NaN is true)
+    if self.e ~= self.e or self.m ~= self.m then return 0 end
     if self:lte(Big:new(0)) then return 0 end
     return self:log10() / math.log(base, 10)
 end
@@ -139,6 +154,16 @@ function Big:pow(pow)
     -- faster than self:eq(Big:new(0))
     if self.m == 0 and self.e == 0 then
         return Big:new(0)
+    end
+    -- Handle negative bases
+    if self.m < 0 then
+        local abs_self = Big:new(math.abs(self.m), self.e)
+        local result = abs_self:pow(pow)
+        -- If pow is an integer, check if result should be negative
+        if pow == math.floor(pow) and pow % 2 ~= 0 then
+            return result:negate()
+        end
+        return result
     end
     local log = self:log10()
     local new_log = log * pow
@@ -346,7 +371,7 @@ function Big.parse(str)
 end
 
 function BigMeta.__concat(a, b)
-    a = Big:create(a)
+    a = Big:new(a)
     return tostring(a) .. tostring(b)
 end
 
@@ -359,7 +384,7 @@ R.E = math.exp(1)
 R.LN2 = math.log(2, R.E)
 R.LN10 = math.log(10, R.E)
 R.LOG2E = math.log(R.E, 2)
-R.LOG10E = math.log(R.E, 0)
+R.LOG10E = math.log(R.E, 10)
 R.PI = math.pi
 R.SQRT1_2 = math.sqrt(0.5)
 R.SQRT2 = math.sqrt(2)
