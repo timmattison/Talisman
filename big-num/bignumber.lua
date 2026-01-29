@@ -49,8 +49,9 @@ function Big:add(b)
     if type(b) == "number" then b = Big:new(b) end
     local delta = b.e - self.e
 
-    if delta > 14 then return b end
-    if delta < -14 then return self end
+    -- Return copies to avoid modifying original objects
+    if delta > 14 then return Big:new(b) end
+    if delta < -14 then return Big:new(self) end
 
     return Big:new(self.m + b.m * 10 ^ delta, self.e):normalized()
 end
@@ -193,7 +194,7 @@ function Big:cbrt()
 end
 
 function Big:round()
-    if self.e > 100 then return self end
+    if self.e > 100 then return Big:new(self) end
     local num = self:to_number()
     if num % 1 < 0.5 then
         return Big:new(math.floor(num))
@@ -207,22 +208,22 @@ function Big:arraySize()
 end
 
 function Big:floor()
-    if self.e > 100 then return self end
+    if self.e > 100 then return Big:new(self) end
     return Big:new(math.floor(self:to_number()))
 end
 
 function Big:ceil()
-    if self.e > 100 then return self end
+    if self.e > 100 then return Big:new(self) end
     return Big:new(math.ceil(self:to_number()))
 end
 
 function Big:floor_m(digits)
-    if self.e > 100 then return self end
+    if self.e > 100 then return Big:new(self) end
     return Big:new(math.floor(self.m * 10 ^ digits) / 10 ^ digits, self.e)
 end
 
 function Big:ceil_m(digits)
-    if self.e > 100 then return self end
+    if self.e > 100 then return Big:new(self) end
     return Big:new(math.ceil(self.m * 10 ^ digits) / 10 ^ digits, self.e)
 end
 

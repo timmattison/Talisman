@@ -198,13 +198,44 @@ end
 
 ---
 
+### 13. Object Mutation Bug - Methods Returning Self Instead of Clone ✅ FIXED
+
+**Location:** `big-num/bignumber.lua` (multiple functions)
+
+**Problem:** Several methods returned `self` directly instead of creating a clone when early-returning for edge cases. This caused mutations to the result object to also affect the original input object.
+
+**Affected functions:**
+- `Big:add()` - lines 53-54: Returned `b` or `self` when magnitudes differed by >14
+- `Big:round()` - line 197: Returned `self` when `self.e > 100`
+- `Big:floor()` - line 211: Returned `self` when `self.e > 100`
+- `Big:ceil()` - line 216: Returned `self` when `self.e > 100`
+- `Big:floor_m()` - line 221: Returned `self` when `self.e > 100`
+- `Big:ceil_m()` - line 226: Returned `self` when `self.e > 100`
+
+**Example of the bug:**
+```lua
+local a = Big:new(1, 100)  -- 1e100
+local b = Big:new(1, 1)    -- 10
+local result = a + b       -- Due to precision limits, returns copy of a
+result.m = 999             -- This ALSO modified a!
+```
+
+**Fix:** Changed all instances to return `Big:new(self)` or `Big:new(b)` to create independent copies:
+```lua
+if delta > 14 then return Big:new(b) end
+if delta < -14 then return Big:new(self) end
+```
+
+---
+
 ## Test Coverage
 
 Tests are located in:
 - `tests/test-runner.lua` - Simple test framework
-- `tests/test-bignumber.lua` - 50 tests for bignumber.lua
+- `tests/test-bignumber.lua` - 57 tests for bignumber.lua
 - `tests/test-omeganum.lua` - 51 tests for omeganum.lua
 - `tests/test-edge-cases.lua` - 58 edge case tests
+- `tests/test-bug-fixes.lua` - 45 regression tests for bug fixes
 
 Run tests with:
 ```bash
@@ -212,8 +243,9 @@ cd tests
 lua test-bignumber.lua
 lua test-omeganum.lua
 lua test-edge-cases.lua
+lua test-bug-fixes.lua
 # Or run all:
 lua run-all-tests.lua
 ```
 
-All 159 tests now pass.
+All 211 tests now pass.

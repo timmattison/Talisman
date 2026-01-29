@@ -348,6 +348,96 @@ T:test("Negative number to odd power is negative", function()
 end)
 
 -- ============================================================================
+-- Object Mutation Tests (verify methods return new objects, not references)
+-- ============================================================================
+
+T:test("add() with large magnitude difference doesn't mutate original", function()
+    local a = Big:new(1, 100)  -- 1e100
+    local b = Big:new(1, 1)    -- 10
+    local original_a_m = a.m
+    local original_a_e = a.e
+    local result = a + b
+    -- Modifying result should not affect a
+    result.m = 999
+    result.e = 999
+    T:assertEqual(original_a_m, a.m, "a.m should be unchanged")
+    T:assertEqual(original_a_e, a.e, "a.e should be unchanged")
+end)
+
+T:test("add() with small magnitude difference doesn't mutate original (b larger)", function()
+    local a = Big:new(1, 1)    -- 10
+    local b = Big:new(1, 100)  -- 1e100
+    local original_b_m = b.m
+    local original_b_e = b.e
+    local result = a + b
+    -- Modifying result should not affect b
+    result.m = 999
+    result.e = 999
+    T:assertEqual(original_b_m, b.m, "b.m should be unchanged")
+    T:assertEqual(original_b_e, b.e, "b.e should be unchanged")
+end)
+
+T:test("round() on large exponent doesn't mutate original", function()
+    local a = Big:new(1, 150)  -- 1e150
+    local original_m = a.m
+    local original_e = a.e
+    local result = a:round()
+    -- Modifying result should not affect a
+    result.m = 999
+    result.e = 999
+    T:assertEqual(original_m, a.m, "a.m should be unchanged")
+    T:assertEqual(original_e, a.e, "a.e should be unchanged")
+end)
+
+T:test("floor() on large exponent doesn't mutate original", function()
+    local a = Big:new(1, 150)  -- 1e150
+    local original_m = a.m
+    local original_e = a.e
+    local result = a:floor()
+    -- Modifying result should not affect a
+    result.m = 999
+    result.e = 999
+    T:assertEqual(original_m, a.m, "a.m should be unchanged")
+    T:assertEqual(original_e, a.e, "a.e should be unchanged")
+end)
+
+T:test("ceil() on large exponent doesn't mutate original", function()
+    local a = Big:new(1, 150)  -- 1e150
+    local original_m = a.m
+    local original_e = a.e
+    local result = a:ceil()
+    -- Modifying result should not affect a
+    result.m = 999
+    result.e = 999
+    T:assertEqual(original_m, a.m, "a.m should be unchanged")
+    T:assertEqual(original_e, a.e, "a.e should be unchanged")
+end)
+
+T:test("floor_m() on large exponent doesn't mutate original", function()
+    local a = Big:new(1, 150)  -- 1e150
+    local original_m = a.m
+    local original_e = a.e
+    local result = a:floor_m(2)
+    -- Modifying result should not affect a
+    result.m = 999
+    result.e = 999
+    T:assertEqual(original_m, a.m, "a.m should be unchanged")
+    T:assertEqual(original_e, a.e, "a.e should be unchanged")
+end)
+
+T:test("ceil_m() on large exponent doesn't mutate original", function()
+    local a = Big:new(1, 150)  -- 1e150
+    local original_m = a.m
+    local original_e = a.e
+    local result = a:ceil_m(2)
+    -- Modifying result should not affect a
+    result.m = 999
+    result.e = 999
+    T:assertEqual(original_m, a.m, "a.m should be unchanged")
+    T:assertEqual(original_e, a.e, "a.e should be unchanged")
+end)
+
+-- ============================================================================
 -- Trigonometry Tests
 -- ============================================================================
 
