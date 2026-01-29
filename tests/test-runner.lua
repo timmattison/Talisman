@@ -77,6 +77,16 @@ function TestRunner:assertThrows(func, message)
     end
 end
 
+--- Assert that a function does NOT throw an error
+--- @param func function Function that should not throw
+--- @param message string Optional message on failure
+function TestRunner:assertNoThrow(func, message)
+    local success, err = pcall(func)
+    if not success then
+        error((message or "Expected function to not throw") .. "\nError: " .. tostring(err))
+    end
+end
+
 --- Assert that a value is NaN
 --- @param value number Value to check
 --- @param message string Optional message on failure

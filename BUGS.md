@@ -1,14 +1,14 @@
 # Bugs Found and Fixed in Talisman Big Number Libraries
 
-This document lists bugs discovered and fixed through testing of `bignumber.lua` and `omeganum.lua`.
+This document lists bugs discovered and fixed through testing of `bignumber.lua`, `omeganum.lua`, and `talisman.lua`.
 
 ## Summary
 
 | Metric | Count |
 |--------|-------|
-| **Bugs Fixed** | 13 |
-| **Total Tests** | 211 |
-| **Regression Tests** | 45 |
+| **Bugs Fixed** | 15 |
+| **Total Tests** | 224 |
+| **Regression Tests** | 58 |
 
 ### Bugs by Library
 
@@ -16,6 +16,7 @@ This document lists bugs discovered and fixed through testing of `bignumber.lua`
 |---------|------------|
 | bignumber.lua | 7 (#1, #2, #3, #8, #9, #13) |
 | omeganum.lua | 7 (#1, #4, #5, #6, #7, #10, #11, #12) |
+| talisman.lua | 2 (#14, #15) |
 
 ### Bugs by Category
 
@@ -28,6 +29,7 @@ This document lists bugs discovered and fixed through testing of `bignumber.lua`
 | Undefined Variables | #1, #8 | Invalid log base, undefined `nan` |
 | Object Mutation | #13 | Returning `self` instead of clone |
 | Dead Code / Typos | #5, #7 | Extra arguments, intentional crashes |
+| Nil Safety | #14, #15 | Using nil as table key or accessing nil properties |
 
 ---
 
@@ -421,6 +423,59 @@ if delta < -14 then return Big:new(self) end
 
 ---
 
+### 14. Nil Table Key in inc_career_stat (talisman.lua)
+
+**Location:** `talisman.lua:408-421`
+
+**Problem:** The `inc_career_stat` function used `stat` as a table key without checking if it was nil. Using nil as a table key causes a "table index is nil" crash.
+
+```lua
+-- Bug: if stat is nil, this crashes
+if not G.PROFILES[G.SETTINGS.profile].career_stats[stat] then
+    G.PROFILES[G.SETTINGS.profile].career_stats[stat] = 0
+end
+```
+
+**Fix:** Added nil check before using stat as table key:
+```lua
+if not stat then return end  -- Nil check to prevent crash
+if not G.PROFILES[G.SETTINGS.profile].career_stats[stat] then
+    G.PROFILES[G.SETTINGS.profile].career_stats[stat] = 0
+end
+```
+
+---
+
+### 15. Nil Ability Access in Card Bonus Functions (talisman.lua)
+
+**Location:** `talisman.lua:852-917` (multiple functions)
+
+**Problem:** Nine Card bonus functions accessed `self.ability.set` and other properties without checking if `self.ability` was nil. If a card has no ability table, this causes an "attempt to index a nil value" crash.
+
+**Affected functions:**
+- `Card:get_chip_x_bonus()`
+- `Card:get_chip_e_bonus()`
+- `Card:get_chip_ee_bonus()`
+- `Card:get_chip_eee_bonus()`
+- `Card:get_chip_hyper_bonus()`
+- `Card:get_chip_e_mult()`
+- `Card:get_chip_ee_mult()`
+- `Card:get_chip_eee_mult()`
+- `Card:get_chip_hyper_mult()`
+
+```lua
+-- Bug: if self.ability is nil, this crashes
+if self.ability.set == 'Joker' then return 0 end
+```
+
+**Fix:** Added nil check for ability before accessing properties:
+```lua
+if not self.ability then return 0 end  -- Nil check to prevent crash
+if self.ability.set == 'Joker' then return 0 end
+```
+
+---
+
 ## Test Coverage
 
 ### Test Files
@@ -431,8 +486,9 @@ if delta < -14 then return Big:new(self) end
 | `tests/test-bignumber.lua` | 57 | Core bignumber.lua functionality |
 | `tests/test-omeganum.lua` | 51 | Core omeganum.lua functionality |
 | `tests/test-edge-cases.lua` | 58 | Edge cases and stress tests |
-| `tests/test-bug-fixes.lua` | 45 | Regression tests for all 13 bugs |
-| **Total** | **211** | |
+| `tests/test-bug-fixes.lua` | 45 | Regression tests for big number bugs |
+| `tests/test-nil-safety.lua` | 13 | Nil safety tests for talisman.lua |
+| **Total** | **224** | |
 
 ### Running Tests
 
@@ -444,6 +500,7 @@ lua test-bignumber.lua
 lua test-omeganum.lua
 lua test-edge-cases.lua
 lua test-bug-fixes.lua
+lua test-nil-safety.lua
 
 # Run all tests
 lua run-all-tests.lua
@@ -451,12 +508,13 @@ lua run-all-tests.lua
 
 ### Regression Test Verification
 
-The regression tests in `test-bug-fixes.lua` were verified against the original buggy code:
+The regression tests were verified against the original buggy code:
 
 | Test Suite | Original Code | Fixed Code |
 |------------|---------------|------------|
 | Bignumber bug tests | 22 failures | 0 failures |
 | Omeganum bug tests | 8 failures | 0 failures |
-| **Total** | **30 failures** | **0 failures** |
+| Nil safety tests | 4 failures | 0 failures |
+| **Total** | **34 failures** | **0 failures** |
 
-This confirms that all 45 regression tests correctly detect the bugs they were written for.
+This confirms that all 58 regression tests correctly detect the bugs they were written for.
