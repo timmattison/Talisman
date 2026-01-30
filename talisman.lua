@@ -609,7 +609,13 @@ function tal_uht(config, vals)
     if vals.handname and G.GAME.current_round.current_hand.handname ~= vals.handname then
         G.GAME.current_round.current_hand.handname = vals.handname
     end
-    if vals.chip_total then G.GAME.current_round.current_hand.chip_total = vals.chip_total;G.hand_text_area.chip_total.config.object:pulse(0.5) end
+    if vals.chip_total then
+        G.GAME.current_round.current_hand.chip_total = vals.chip_total
+        -- Nil check to prevent "attempt to index field 'object' (a nil value)" crash
+        if (G.hand_text_area.chip_total or {config = {}}).config.object then
+            G.hand_text_area.chip_total.config.object:pulse(0.5)
+        end
+    end
     if vals.level and G.GAME.current_round.current_hand.hand_level ~= ' '..localize('k_lvl')..tostring(vals.level) then
         if vals.level == '' then
             G.GAME.current_round.current_hand.hand_level = vals.level
@@ -664,8 +670,12 @@ function Game:update(dt)
         G.latest_uht = nil
     end
     if Talisman.dollar_update then
-      G.HUD:get_UIE_by_ID('dollar_text_UI').config.object:update()
-      G.HUD:recalculate()
+      -- Nil check to prevent "attempt to index field 'object' (a nil value)" crash
+      local dollar_ui = G.HUD and G.HUD:get_UIE_by_ID('dollar_text_UI')
+      if dollar_ui and dollar_ui.config and dollar_ui.config.object then
+        dollar_ui.config.object:update()
+      end
+      if G.HUD then G.HUD:recalculate() end
       Talisman.dollar_update = false
     end
 end

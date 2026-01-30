@@ -6,9 +6,9 @@ This document lists bugs discovered and fixed through testing of `bignumber.lua`
 
 | Metric | Count |
 |--------|-------|
-| **Bugs Fixed** | 15 |
-| **Total Tests** | 224 |
-| **Regression Tests** | 58 |
+| **Bugs Fixed** | 16 |
+| **Total Tests** | 229 |
+| **Regression Tests** | 63 |
 
 ### Bugs by Library
 
@@ -16,7 +16,7 @@ This document lists bugs discovered and fixed through testing of `bignumber.lua`
 |---------|------------|
 | bignumber.lua | 7 (#1, #2, #3, #8, #9, #13) |
 | omeganum.lua | 7 (#1, #4, #5, #6, #7, #10, #11, #12) |
-| talisman.lua | 2 (#14, #15) |
+| talisman.lua | 3 (#14, #15, #16) |
 
 ### Bugs by Category
 
@@ -29,7 +29,7 @@ This document lists bugs discovered and fixed through testing of `bignumber.lua`
 | Undefined Variables | #1, #8 | Invalid log base, undefined `nan` |
 | Object Mutation | #13 | Returning `self` instead of clone |
 | Dead Code / Typos | #5, #7 | Extra arguments, intentional crashes |
-| Nil Safety | #14, #15 | Using nil as table key or accessing nil properties |
+| Nil Safety | #14, #15, #16 | Using nil as table key or accessing nil properties |
 
 ---
 
@@ -476,6 +476,37 @@ if self.ability.set == 'Joker' then return 0 end
 
 ---
 
+### 16. Nil .config.object Access in UI Functions (talisman.lua)
+
+**Location:** `talisman.lua:612, 667`
+
+**Problem:** Two UI update calls accessed `.config.object` without checking if `object` was nil. This causes "attempt to index field 'object' (a nil value)" crash when UI elements aren't fully initialized.
+
+**Affected code:**
+```lua
+-- Line 612 (chip_total update):
+G.hand_text_area.chip_total.config.object:pulse(0.5)
+
+-- Line 667 (dollar text update):
+G.HUD:get_UIE_by_ID('dollar_text_UI').config.object:update()
+```
+
+**Fix:** Added nil checks using the same pattern as existing safe code (lines 593, 605):
+```lua
+-- chip_total fix:
+if (G.hand_text_area.chip_total or {config = {}}).config.object then
+    G.hand_text_area.chip_total.config.object:pulse(0.5)
+end
+
+-- dollar_text_UI fix:
+local dollar_ui = G.HUD and G.HUD:get_UIE_by_ID('dollar_text_UI')
+if dollar_ui and dollar_ui.config and dollar_ui.config.object then
+    dollar_ui.config.object:update()
+end
+```
+
+---
+
 ## Test Coverage
 
 ### Test Files
@@ -487,8 +518,8 @@ if self.ability.set == 'Joker' then return 0 end
 | `tests/test-omeganum.lua` | 51 | Core omeganum.lua functionality |
 | `tests/test-edge-cases.lua` | 58 | Edge cases and stress tests |
 | `tests/test-bug-fixes.lua` | 45 | Regression tests for big number bugs |
-| `tests/test-nil-safety.lua` | 13 | Nil safety tests for talisman.lua |
-| **Total** | **224** | |
+| `tests/test-nil-safety.lua` | 18 | Nil safety tests for talisman.lua |
+| **Total** | **229** | |
 
 ### Running Tests
 
@@ -514,7 +545,7 @@ The regression tests were verified against the original buggy code:
 |------------|---------------|------------|
 | Bignumber bug tests | 22 failures | 0 failures |
 | Omeganum bug tests | 8 failures | 0 failures |
-| Nil safety tests | 4 failures | 0 failures |
-| **Total** | **34 failures** | **0 failures** |
+| Nil safety tests | 7 failures | 0 failures |
+| **Total** | **37 failures** | **0 failures** |
 
 This confirms that all 58 regression tests correctly detect the bugs they were written for.

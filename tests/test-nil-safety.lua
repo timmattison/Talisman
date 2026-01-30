@@ -284,6 +284,81 @@ T:test("talisman.lua: Card:get_chip_hyper_bonus has nil check for ability", func
 end)
 
 -- ============================================================================
+-- BUG #16: .config.object nil access patterns
+-- These patterns crash with "attempt to index field 'object' (a nil value)"
+-- ============================================================================
+
+T:test("config.object pattern: nil object crashes", function()
+    local ui_element = {
+        config = {
+            object = nil  -- object is nil
+        }
+    }
+
+    T:assertThrows(function()
+        ui_element.config.object:pulse(0.5)  -- Crashes!
+    end, "Calling method on nil object should crash")
+end)
+
+T:test("config.object pattern: safe version checks object", function()
+    local ui_element = {
+        config = {
+            object = nil
+        }
+    }
+
+    T:assertNoThrow(function()
+        if ui_element and ui_element.config and ui_element.config.object then
+            ui_element.config.object:pulse(0.5)
+        end
+    end, "Checking object before use should not crash")
+end)
+
+T:test("config.object pattern: works when object exists", function()
+    local pulse_called = false
+    local ui_element = {
+        config = {
+            object = {
+                pulse = function(self, val)
+                    pulse_called = true
+                end
+            }
+        }
+    }
+
+    T:assertNoThrow(function()
+        if ui_element and ui_element.config and ui_element.config.object then
+            ui_element.config.object:pulse(0.5)
+        end
+    end, "Should work when object exists")
+
+    T:assert(pulse_called, "pulse should have been called")
+end)
+
+-- ============================================================================
+-- VERIFY .config.object FIXES IN talisman.lua
+-- ============================================================================
+
+T:test("talisman.lua: chip_total.config.object has nil check", function()
+    T:assertNotNil(talisman_content, "Should be able to read talisman.lua")
+    -- The fix uses same pattern as chips/mult: (G.hand_text_area.chip_total or {config = {}}).config.object
+    T:assert(
+        talisman_content:find("%(G%.hand_text_area%.chip_total or {config = {}}%)%.config%.object then"),
+        "chip_total should use safe nil check pattern before accessing config.object"
+    )
+end)
+
+T:test("talisman.lua: dollar_text_UI.config.object has nil check", function()
+    T:assertNotNil(talisman_content, "Should be able to read talisman.lua")
+    -- The fix should check before calling update
+    T:assert(
+        not talisman_content:find("dollar_text_UI'%)%.config%.object:update")
+        or talisman_content:find("dollar_text_UI.-%and.-%config.-%and.-%object"),
+        "dollar_text_UI.config.object:update should have nil check or be wrapped"
+    )
+end)
+
+-- ============================================================================
 -- Run all tests
 -- ============================================================================
 
